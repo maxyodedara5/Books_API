@@ -1,7 +1,19 @@
 from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 from pydantic import BaseModel
-from random import randrange
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+import time
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
+
+DATABASE_PASSWORD = os.environ.get("PASSWORD")
+USER = os.environ.get("USER")
 
 app = FastAPI()
 
@@ -11,50 +23,40 @@ class Book(BaseModel):
     author: str
 
 
+while True:
+    try:
+        conn = psycopg2.connect(host='localhost', database="books_db", user=USER, 
+                                password=DATABASE_PASSWORD, cursor_factory=RealDictCursor)
+        cursor = conn.cursor()
+        print("DB connection successfully established")
+        break
+    except Exception as error:
+        print("Connecting to DB failed:")
+        print("Error: ", error)
+        time.sleep(20)
+        # TODO: Set a reasonable amount of time for sleep if DB connection not done
+
+
 @app.get("/")
 async def read_root():
     return {"Hello": "World"}
 
 
-books = [
-    {
-        "title": "A Walk to Remember",
-        "author": "Nicholas Sparks",
-        "id": 1
-    },
-    {
-        "title": "The Night Circus",
-        "author": "Erin Morgenstern",
-        "id": 2
-    },
-]
-
-
-def book_by_id(id):
-    for book in books:
-        if book["id"] == id:
-            return book
-    
-
-def get_index(id):
-    for index, book in enumerate(books):
-        if book["id"] == id:
-            return index
-
 @app.get("/books")
 def get_books():
+    cursor.execute("""SELECT * from  books""")
+    books = cursor.fetchall()
     return {"Books": books}
 
 
 @app.get("/books/{id}")
-def get_books(id: int, response: Response):
-    book = book_by_id(id)
+def get_books(id: int):
+    cursor.execute("""SELECT * FROM books where id = %s""", (str(id)))
+    book = cursor.fetchone()
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Book Not Found Go Away, no id: {id} present")
-
-    return book
-    
+    return {"Books": book}
 
 
 @app.post("/books", status_code=status.HTTP_201_CREATED)
@@ -63,33 +65,29 @@ def create_books(book: Book):
     Title:
     Author:
     """
-    new_book = book.model_dump()
-    new_book["id"] = randrange(0,999)
-    books.append(new_book)
+    cursor.execute("""INSERT INTO books (title, author) VALUES (%s, %s) RETURNING *""", (book.title, book.author))
+    new_book = cursor.fetchone()
+    conn.commit()
+    return {"Created Books": new_book}
 
-    return {book.title: new_book}
 
 @app.delete("/books/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_books(id: int):
-    index = get_index(id)
-    books.pop(index)
-
-    if index == None:
+    cursor.execute("""DELETE FROM books where id = %s RETURNING *""", (str(id)))
+    deleted_book = cursor.fetchone()
+    conn.commit()
+    if not deleted_book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Book Not Found Go Away, no id: {id} present")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return {"Deleted Books": deleted_book}
 
 
 @app.put("/books/{id}")
 def update_book(id: int, book: Book):
-    index = get_index(id)
-
-    if index == None:
+    cursor.execute("""UPDATE books SET title = %s, author = %s where id = %s RETURNING *""", (book.title, book.author, str(id)))
+    updated_book = cursor.fetchone()
+    conn.commit()
+    if not updated_book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Book Not Found Go Away, no id: {id} present")
-    
-    book_dict = book.model_dump()
-    book_dict["id"] = id
-    books[index] = book_dict
-
-    return {"Updated book" : books[index]}
+    return {"Updated Books": updated_book}
