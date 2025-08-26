@@ -13,6 +13,7 @@ load_dotenv(dotenv_path)
 DATABASE_PASSWORD = os.environ.get("PASSWORD")
 USER = os.environ.get("USER")
 
+
 SQLALCHEMY_DATABASE_URL = f"postgresql://{USER}:{DATABASE_PASSWORD}@localhost/books_db"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
