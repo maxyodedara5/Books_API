@@ -1,17 +1,17 @@
-from pathlib import Path
 import sys
+from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from database import get_db
-import models, schemas
+from typing import List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status, APIRouter
-
-from sqlalchemy.orm import Session
-from typing import List
+import models
 import oauth2
-
-
+import schemas
+from database import get_db
+from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Response,
+                     status)
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     prefix="/books",
@@ -19,8 +19,16 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.BookResponse])
-def get_books(db: Session = Depends(get_db), current_user: str = Depends(oauth2.get_current_user)):
-    books = db.query(models.Book).all()
+def get_books(db: Session = Depends(get_db), 
+              current_user: str = Depends(oauth2.get_current_user), 
+              limit: int = 10,
+              skip: int = 0,
+              search: Optional[str] = ""):
+
+    books = db.query(models.Book).\
+            filter(models.Book.title.contains(search)).\
+            limit(limit).\
+            offset(skip).all()
     return books
 
 
@@ -40,7 +48,8 @@ def create_books(book: schemas.BookCreate, db: Session = Depends(get_db), curren
     Author:
     """
     print(f"User : {current_user.email}")
-    new_book = models.Book(**book.model_dump())
+    new_book = models.Book(owner_id=current_user.id, **book.model_dump())
+    
     db.add(new_book)
     db.commit()
     db.refresh(new_book)
@@ -48,12 +57,18 @@ def create_books(book: schemas.BookCreate, db: Session = Depends(get_db), curren
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_books(id: int, db: Session = Depends(get_db), current_user: str = Depends(oauth2.get_current_user)):
-    post_query = db.query(models.Book).filter(models.Book.id == id)
-    if not post_query.first():
+    
+    book_query = db.query(models.Book).filter(models.Book.id == id)
+    book = book_query.first()
+    if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Book Not Found Go Away, no id: {id} present")
     
-    post_query.delete(synchronize_session=False)
+    if book.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Invalid credentails for this operation")
+
+    book_query.delete(synchronize_session=False)
     db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -66,6 +81,10 @@ def update_book(id: int, book: schemas.BookBase, db: Session = Depends(get_db), 
     if not update_query.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Book Not Found Go Away, no id: {id} present")
+    
+    if update_query.first().owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Invalid credentails for this operation")
     
     update_query.update(book.model_dump(), synchronize_session=False)
     db.commit()

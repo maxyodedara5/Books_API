@@ -1,13 +1,12 @@
 
 from typing import List
 
-import models
 import database
-
+import models
+from config import settings
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from routers import auth, book, user
 from sqlalchemy.orm import Session
-
-from routers import book, user, auth
 
 models.Base.metadata.create_all(bind=database.engine)
 

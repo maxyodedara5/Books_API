@@ -1,22 +1,21 @@
-from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
-import os
-from os.path import dirname, join
-from dotenv import load_dotenv
-import schemas, database, models
-from fastapi import Depends, status, HTTPException
-from sqlalchemy.orm import Session
+
+import database
+import models
+import schemas
+from config import settings
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-dotenv_path = join(dirname(__file__), '.env')
-load_dotenv(dotenv_path)
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
 
-SECRET_KEY = os.environ.get("SECRET_KEY")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 def create_access_token(data: dict):
     to_encode = data.copy()

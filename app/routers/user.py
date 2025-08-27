@@ -1,10 +1,14 @@
-from pathlib import Path
 import sys
+from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-import models, schemas, utils
-from fastapi import Depends, FastAPI, HTTPException, Response, status, APIRouter
+import models
+import schemas
+import utils
 from database import get_db
+from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Response,
+                     status)
 from sqlalchemy.orm import Session
 
 router = APIRouter(

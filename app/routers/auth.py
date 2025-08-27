@@ -1,14 +1,17 @@
-from pathlib import Path
 import sys
+from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
-from fastapi import APIRouter, Depends, status, HTTPException, Response
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session 
+import models
+import oauth2
+import schemas
+import utils
 from database import get_db
-import schemas, models, utils, oauth2
-
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     tags=["Authentication"]
