@@ -44,7 +44,17 @@ def get_books(
     db: Session = Depends(get_db),
     current_user: str = Depends(oauth2.get_current_user),
 ):
-    book = db.query(models.Book).filter(models.Book.id == id).first()
+    # book = db.query(models.Book).filter(models.Book.id == id).first()
+
+    # book with vote info
+    book = (
+        db.query(models.Book, func.count(models.Vote.book_id).label("votes"))
+        .join(models.Vote, models.Vote.book_id == models.Book.id, isouter=True)
+        .group_by(models.Book.id)
+        .filter(models.Book.id == id)
+        .first()
+    )
+
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
