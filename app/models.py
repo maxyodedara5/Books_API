@@ -1,14 +1,3 @@
-import sys
-from pathlib import Path
-
-
-# sys.path.append(str(Path(__file__).resolve().parent.parent))
-
-import os
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
-
 from database import Base
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, String, text
 from sqlalchemy.orm import relationship
