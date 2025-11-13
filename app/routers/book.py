@@ -64,7 +64,7 @@ def get_books(
 
 
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=schemas.BookResponse
+    "/", status_code=status.HTTP_201_CREATED, response_model=schemas.Book
 )
 def create_books(
     book: schemas.BookCreate,
@@ -75,9 +75,7 @@ def create_books(
     Title:
     Author:
     """
-    print(f"User : {current_user.email}")
     new_book = models.Book(owner_id=current_user.id, **book.model_dump())
-
     db.add(new_book)
     db.commit()
     db.refresh(new_book)

@@ -1,0 +1,43 @@
+services:
+  api: 
+    image: maxyodedara5/fastapi_books
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 80:8000
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_HOSTNAME=${DATABASE_HOSTNAME}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+
+  alembic:
+    image: maxyodedara5/fastapi_books
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head"
+
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - DATABASE_HOSTNAME=${DATABASE_HOSTNAME} 
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DATABASE_NAME}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres-db:/var/lib/postgresql/
+
+    
+volumes:
+  postgres-db:
