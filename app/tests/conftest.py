@@ -15,9 +15,10 @@ from oauth2 import create_access_token
 # stop the app dependency from overriding
 
 from main import app
-from .. import schemas
+# from .. import schemas
 from config import settings
 from database import Base, get_db
+import models
 
 TEST_SQLALCHEMY_DATABASE_URL = f"postgresql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}/{settings.database_name}_test"
 test_engine = create_engine(TEST_SQLALCHEMY_DATABASE_URL)
@@ -59,6 +60,16 @@ def test_user(client):
     return new_user
 
 @pytest.fixture
+def test_user2(client):
+    user_data = {"email":"testuser2@book.com",
+                 "password":"password123"}
+    res = client.post("/users/", json=user_data)
+    assert res.status_code == 201
+    new_user = res.json()
+    new_user["password"] = user_data["password"]
+    return new_user
+
+@pytest.fixture
 def token(test_user):
     return create_access_token({"user_id": test_user["id"]})
 
@@ -69,3 +80,36 @@ def authenticated_client(client, token):
         "Authorization": f"Bearer {token}"
     }
     return client
+
+@pytest.fixture
+def test_books(test_user, test_user2, session):
+    books_data = [{
+        "title": "Book_First",
+        "author": "Author_First",
+        "owner_id": test_user["id"]
+    }, {
+        "title": "Book_Second",
+        "author": "Author_Second",
+        "owner_id": test_user["id"]
+    }, {
+        "title": "Book_Third",
+        "author": "Author_Third",
+        "owner_id": test_user2["id"]
+    }]
+
+    def create_book_model(books_data):
+        return models.Book(**books_data)
+
+    book_map = map(create_book_model, books_data)
+    books_list = list(book_map)
+
+
+    session.add_all(books_list)
+
+    # session.add_all([models.Book])
+    session.commit()
+    created_books = session.query(models.Book).all()
+
+
+    return created_books
+

@@ -109,7 +109,7 @@ def delete_books(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/{id}", response_model=schemas.BookResponse)
+@router.put("/{id}", response_model=schemas.BookBase)
 def update_book(
     id: int,
     book: schemas.BookBase,
